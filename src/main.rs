@@ -3,7 +3,7 @@
 use std::cmp::min;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
-use euler::{segment_sieve};
+use euler::{is_prime, segment_sieve};
 
 fn ex_77_ways(n: u8) -> Vec<Vec<u8>> {
     let mut ws: Vec<Vec<u8>> = (1..n).map(|x| vec![x]).collect();
@@ -134,7 +134,17 @@ fn pm(n: u64) -> HashMap<u64, Vec<u64>> {
     hs
 }
 
+pub fn check_perfect_number(num: i32) -> bool {
+    if num < 6 || num & 1 == 1 { return false }
+    let x = num.trailing_zeros();
+    let y = num >> x;
+    let z = (1 << (x + 1)) - 1;
+    y == z && is_prime(z as u64)
+}
+
 fn main() {
+
+    println!("{}", check_perfect_number(36));
 
     let dbg1 = false;
     let dbg2 = false;
