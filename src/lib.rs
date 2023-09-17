@@ -1,5 +1,4 @@
 #![allow(unused)]
-
 use std::cmp::min;
 use std::collections::HashMap;
 
@@ -178,14 +177,13 @@ pub fn segment_sieve(n: u64, include_2: bool) -> Vec<u64> {
     fin_primes
 }
 
-// вычисление тотиентов для чисел на интервале [1..n)
-// Для миллиарда считает порядка 31 сек
-pub fn totient(n: u64, primes: &[u64]) -> Vec<u64> {
-    let mut tot: Vec<u64> = Vec::with_capacity(n as usize);
+// вычисление тотиентов для чисел на интервале [1..n]
+// внимание! массив простых должен начинаться с 3!
+pub fn mass_totient(n: u64, primes: &[u64]) -> Vec<u64> {
+    let mut tot: Vec<u64> = Vec::with_capacity((n + 1) as usize);
     // Заполняем вектор тотиентов единицами
-    unsafe { tot.set_len(n as usize) }
+    unsafe { tot.set_len((n + 1) as usize) }
     tot.fill(1);
-    //for _ in 0..n { tot.push(1) }
     // заполняем тотиенты степеней простых
     let mut prime: u64;
     let mut u: u64;
@@ -195,8 +193,8 @@ pub fn totient(n: u64, primes: &[u64]) -> Vec<u64> {
     // цикл для 2
     u = 1;
     v = 2;
-    while v < n {
-        for x in (v..n).step_by((v << 1) as usize) { tot[x as usize] = u; }
+    while v <= n {
+        for x in (v..=n).step_by((v << 1) as usize) { tot[x as usize] = u; }
         u = v;
         v <<= 1;
     }
@@ -205,18 +203,15 @@ pub fn totient(n: u64, primes: &[u64]) -> Vec<u64> {
         prime = *p;
         u = 1;
         v = prime;
-        while v < n {
+        while v <= n {
             z = v - u;
             // считаем тотиент для степени простого
             tot[v as usize] = z;
             // считаем тотиенты для кратных степени простого числа
             // пропускаем только кратные более высокой степени простого числа
             k = 2;
-            for x in ((v << 1)..n).step_by(v as usize) {
-                if k == prime {
-                    k = 1;
-                    continue;
-                }
+            for x in ((v << 1)..=n).step_by(v as usize) {
+                if k == prime { k = 1; continue; }
                 tot[x as usize] *= z;
                 k += 1;
             }
@@ -227,13 +222,13 @@ pub fn totient(n: u64, primes: &[u64]) -> Vec<u64> {
     tot
 }
 
-// вычисление сумм делителей для чисел на интервале [1..n)
-pub fn vec_sigma(n: u64, primes: &[u64]) -> Vec<u64> {
-    let mut sig: Vec<u64> = Vec::with_capacity(n as usize);
+// вычисление сумм делителей для чисел на интервале [1..n]
+// внимание! массив простых должен начинаться с 3!
+pub fn mass_sigma(n: u64, primes: &[u64]) -> Vec<u64> {
+    let mut sig: Vec<u64> = Vec::with_capacity((n + 1) as usize);
     // Заполняем вектор сигм единицами
-    unsafe { sig.set_len(n as usize) }
+    unsafe { sig.set_len((n + 1) as usize) }
     sig.fill(1);
-    //for _ in 0..n { sig.push(1) }
     // Считаем сигмы степеней простых
     let mut prime: u64;
     let mut u: u64;
@@ -243,9 +238,9 @@ pub fn vec_sigma(n: u64, primes: &[u64]) -> Vec<u64> {
     // цикл для 2 - приходится обрабатывать отдельно
     u = 1;
     v = 2;
-    while v < n {
+    while v <= n {
         u += v;
-        for x in (v..n).step_by((v << 1) as usize) {
+        for x in (v..=n).step_by((v << 1) as usize) {
             sig[x as usize] = u;
         }
         v <<= 1;
@@ -255,14 +250,14 @@ pub fn vec_sigma(n: u64, primes: &[u64]) -> Vec<u64> {
         prime = *p;
         u = 1;
         v = prime;
-        while v < n {
+        while v <= n {
             u += v;
             // считаем сигму для степени простого
             sig[v as usize] = u;
             // считаем сигмы для кратных степени простого числа
             // пропускаем только кратные более высокой степени простого числа
             k = 2;
-            for x in ((v << 1)..n).step_by(v as usize) {
+            for x in ((v << 1)..=n).step_by(v as usize) {
                 if k == prime {
                     k = 1;
                     continue;
@@ -276,70 +271,51 @@ pub fn vec_sigma(n: u64, primes: &[u64]) -> Vec<u64> {
     sig
 }
 
-// вычисление сумм делителей для чисел на интервале [1..n)
-pub fn mod_sigma(n: u64, primes: &[u64], hp: &HashMap<u64, u64>) -> Vec<u64> {
-    let mut sig: Vec<u64> = Vec::with_capacity(n as usize);
-    // Заполняем вектор сигм единицами
-    for _ in 0..n { sig.push(1) }
-    // Считаем сигмы степеней простых
-    let (mut prime, mut u, mut u_prev, mut v, mut k, mut z, mut factor);
-    // цикл для 2 - приходится обрабатывать отдельно
-    u = 1;
-    v = 2;
-    while v < n {
-        u_prev = u;
-        u += v;
-        z = u + (u_prev << 1);
-        for x in (v..n).step_by((v << 1) as usize) {
-            sig[x as usize] = z;
-        }
-        v <<= 1;
-    }
-    // цикл для остальных простых
-    for p in primes.iter() {
-        prime = *p;
-        u = 1;
-        v = prime;
-        factor = 0;
-        if hp.contains_key(&p) { factor = *hp.get(&p).unwrap() }
-        while v < n {
-            u_prev = u;
-            u += v;
-            // считаем сигму для степени простого
-            z = u + factor * u_prev;
-            sig[v as usize] = z;
-            // считаем сигмы для кратных степени простого числа
-            // пропускаем только кратные более высокой степени простого числа
-            k = 2;
-            for x in ((v << 1)..n).step_by(v as usize) {
-                if k == prime {
-                    k = 1;
-                    continue;
-                }
-                sig[x as usize] *= z;
-                k += 1;
-            }
-            v *= prime;
-        }
-    }
-    sig
-}
-
-// вычисление радикалов на интервале [1..n)
-pub fn vec_rad(n: u64, primes: &[u64]) -> Vec<u64> {
-    let mut rad: Vec<u64> = Vec::with_capacity(n as usize);
-    for _ in 0..n { rad.push(1) }
+// вычисление радикалов на интервале [1..n]
+pub fn mass_rad(n: u64, primes: &[u64]) -> Vec<u64> {
+    let mut rad: Vec<u64> = Vec::with_capacity((n + 1) as usize);
+    unsafe { rad.set_len((n + 1) as usize) }
+    rad.fill(1);
+    rad[0] = 0;
     let mut prime: u64;
     let mut v: u64;
     for p in primes.iter() {
         prime = *p;
+        if prime >= n { break }
         v = prime;
         rad[v as usize] = prime;
-        for x in ((v << 1)..n).step_by(v as usize) {
+        for x in ((v << 1)..=n).step_by(v as usize) {
             rad[x as usize] *= prime
         }
     }
     rad
+}
+
+// Вычисление функции Мебиуса на интервале [1..n]
+// внимание! массив простых должен начинаться с 3!
+pub fn mass_moebius(n: u64, primes: &[u64]) -> Vec<i8> {
+    let mut xs: Vec<i8> = Vec::with_capacity(1 + n as usize);
+    unsafe { xs.set_len(1 + n as usize) }
+    xs.fill(0);
+    xs[1] = 1;
+    xs[2] = -1;
+    for p in primes {
+        let p2 = *p << 1;
+        if p2 <= n { xs[p2 as usize] = 1; } else { break }
+    }
+    for prime in primes {
+        let p = *prime;
+        let mut k = 2;
+        let mut l = p + 2;
+        let mut m = p * l;
+        while m <= n {
+            if k != p { xs[m as usize] = -xs[l as usize]; } else { k = 0; }
+            k += 1;
+            l += 1;
+            m += p;
+        }
+    }
+    xs
 }
 
 // Находим пары (a, b): a²+b² = простое число
@@ -384,7 +360,7 @@ pub fn is_prime(n: u64) -> bool {
     if n & 1 == 0 { return n == 2 }
     if n % 3 == 0 { return n == 3 }
     let mut d = 5;
-    while d * d < n {
+    while d * d <= n {
         if n % d == 0 || n % (d + 2) == 0 { return false }
         d += 6;
     }
@@ -393,6 +369,7 @@ pub fn is_prime(n: u64) -> bool {
 
 // Наибольший общий делитель (классический метод)
 pub fn old_gcd(n: u64, m: u64) -> u64 {
+    if n == 1 || m == 1 { return 1 }
     if n == m { return n }
     let (mut a, mut b) = if n < m { (m, n) } else { (n, m) };
     if a % b == 0 { return b }
@@ -403,6 +380,7 @@ pub fn old_gcd(n: u64, m: u64) -> u64 {
 // Наибольший общий делитель (бинарный метод)
 // Скорость плюс-минус равна классическому, но нет операций деления!
 pub fn gcd(n: u64, m: u64) -> u64 {
+    if n == 1 || m == 1 { return 1 }
     if n == m { return n }
     let (mut u, mut v) = (n, m);
     let (mut a, mut b) = (0u64, 0u64);
@@ -447,11 +425,11 @@ pub fn rad(num: u64, primes: &[u64]) -> u64 {
     rad
 }
 
-// Стпень δ(p) простого числа в разложении n!
+// Степень δ(p) простого числа в разложении n!
 pub fn exp(n: u64, p: u64) -> u64 {
     let mut exp = 0u64;
     let mut exp_p = p;
-    while exp_p < n {
+    while exp_p <= n {
         exp += n / exp_p;
         exp_p *= p;
     }
@@ -459,12 +437,34 @@ pub fn exp(n: u64, p: u64) -> u64 {
 }
 
 // Считаем p^m % b
-// Степень считаем рекурсивно -> странно, но факт - рекурсивно считает быстрее чем итеративно
-pub fn powmod(p: u64, m: u64, b: u64) -> u64 {
+// Степень считаем рекурсивно -> странно, но факт -
+// рекурсивно считает быстрее чем итеративно
+pub fn pow_mod(p: u64, m: u64, b: u64) -> u64 {
+    if m == 0 { return 1 }
     let x = p % b;
     if m == 1 { return x }
-    let y = powmod(x * x,m >> 1, b);
+    let y = pow_mod(x * x,m >> 1, b);
     if m & 1 == 0 { y % b } else { (x * y) % b }
+}
+
+// Считаем p^m % b бинарным методом
+pub fn powb_mod(p: u64, m: u64, b: u64) -> u64 {
+    if m == 0 { return 1 }
+    let mut x = p % b;
+    if m == 1 && x == 1 { return x }
+    let mut r = 1;
+    let mut y = m;
+    while y > 0 {
+        if y & 1 == 1 {
+            r *= x;
+            r %= b;
+            if r == 1 && (b - 1) % y == 0 { return 1 }
+        }
+        x *= x;
+        x %= b;
+        y >>= 1;
+    }
+    r
 }
 
 // Вычисление порядка числа 10 в группе Z(p)
@@ -477,7 +477,7 @@ pub fn ord(num: u64, primes: &[u64]) -> u64 {
         p = *prime;
         if p > x { break }
         if n % p == 0 {
-            z = powmod(10, p , num);
+            z = pow_mod(10, p , num);
             //println!("p={p} z={z}");
             if z == 1 { return p }
             if z == n { return p << 1 }
@@ -523,6 +523,17 @@ pub fn permutations<T: Copy + PartialEq>(arr: &[T]) -> Vec<Vec<T>> {
     ps
 }
 
+// число-палиндром?
+pub fn palindromyc(num: u64) -> bool {
+    if num < 10 { return true }
+    let s = num_digits(num);
+    let size = s.len();
+    for i in 0..size >> 1 {
+        if s[i] != s[size - i - 1] { return false }
+    }
+    true
+}
+
 // Цифры числа
 pub fn num_digits(n: u64) -> Vec<u8> {
     (1..).into_iter().scan(n, |s, _| {
@@ -550,4 +561,56 @@ pub fn max<T: Copy + PartialOrd>(v: &[T]) -> (T, usize) {
         }
     }
     (m, index)
+}
+
+// Convert from decimal to roman numeral
+pub fn decimal_to_roman(n: u32) -> String {
+    let keys = [1, 4, 5, 9, 10, 40, 50, 90, 100, 400, 500, 900, 1000];
+    let vals = ["I", "IV", "V", "IX", "X", "XL", "L", "XC", "C", "CD", "D", "CM", "M"];
+    let mut size = keys.len();
+    // проверяем входное значение на наличие в keys
+    if keys.contains(&n) {
+        for i in 0..size {
+            if keys[i] == n { return vals[i].to_string() }
+        }
+    }
+    // формируем ответ
+    let mut m = n;
+    let mut r = "".to_string();
+    size -= 1;
+    for i in 0..=size {
+        let x = m / keys[size - i];
+        if x == 0 { continue }
+        m -= x * keys[size - i];
+        for _ in 0..x { r += vals[size - i] }
+        if m == 0 { break }
+    }
+    r
+}
+
+// Convert from roman numeral to decimal
+pub fn roman_to_decimal(s: &str) -> u32 {
+    if s.len() == 0 { return 0 }
+    let r = HashMap::from([
+        ("I".to_string(), 1), ("IV".to_string(), 4), ("V".to_string(), 5), ("IX".to_string(), 9),
+        ("X".to_string(), 10), ("XL".to_string(), 40), ("L".to_string(), 50),
+        ("XC".to_string(), 90), ("C".to_string(), 100), ("CD".to_string(), 400),
+        ("D".to_string(), 500), ("CM".to_string(), 900), ("M".to_string(), 1000)
+    ]);
+    let mut res = 0;
+    let mut index = 0;
+    while index < s.len() - 1 {
+        let pair = &s[index..index + 2];
+        if r.contains_key(pair) {
+            res += *r.get(pair).unwrap();
+            index += 2;
+        } else {
+            res += *r.get(&pair[0..1]).unwrap();
+            index += 1;
+        }
+    }
+    if index == s.len() - 1 {
+        res += *r.get(&s[index..index + 1]).unwrap();
+    }
+    res
 }
